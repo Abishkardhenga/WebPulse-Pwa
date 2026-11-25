@@ -10,7 +10,7 @@ import { useAuth } from './hooks/useAuth';
 import { useCallHistory } from './hooks/useCallHistory';
 import { useSocialDirectory } from './hooks/useSocialDirectory';
 import { useWebRTCCall, type CallTargetPeer } from './hooks/useWebRTCCall';
-import { generateRoomCode, ROOM_CODE_REGEX } from './lib/firebase';
+import { generateRoomCode, isFirebaseConfigured, ROOM_CODE_REGEX } from './lib/firebase';
 import type { IncomingCallItem } from './types/pulsecall';
 
 function getRoomCodeFromUrl(): string | null {
@@ -251,6 +251,30 @@ function PulseCallApp() {
 }
 
 export default function App() {
+  if (!isFirebaseConfigured) {
+    return (
+      <div className="min-h-[100dvh] bg-[#09152B] text-slate-100 flex items-center justify-center p-6 safe-pt safe-pb safe-px">
+        <div className="w-full max-w-lg rounded-3xl bg-[#0F1F3D] border border-white/10 p-6 sm:p-8 shadow-2xl">
+          <h1 className="text-xl font-bold text-white">Firebase configuration required</h1>
+          <p className="mt-2 text-sm text-slate-300 leading-relaxed">
+            Add the following environment variables in your Vercel Project Settings (or include{' '}
+            <code className="font-mono text-[#00E5FF]">firebase-applet-config.json</code>) and
+            redeploy:
+          </p>
+          <ul className="mt-4 space-y-1.5 font-mono text-xs text-slate-200 bg-[#09152B] border border-white/10 rounded-2xl p-4">
+            <li>VITE_FIREBASE_API_KEY</li>
+            <li>VITE_FIREBASE_AUTH_DOMAIN</li>
+            <li>VITE_FIREBASE_PROJECT_ID</li>
+            <li>VITE_FIREBASE_STORAGE_BUCKET</li>
+            <li>VITE_FIREBASE_MESSAGING_SENDER_ID</li>
+            <li>VITE_FIREBASE_APP_ID</li>
+            <li>VITE_FIREBASE_DATABASE_ID</li>
+          </ul>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <ErrorBoundary>
       <PulseCallApp />

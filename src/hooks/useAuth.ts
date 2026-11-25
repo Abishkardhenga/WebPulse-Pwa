@@ -191,6 +191,19 @@ export function useAuth() {
         setAuthError(
           'Sign-in popup was blocked by your browser. Please allow popups for this site and try again.'
         );
+      } else if (code === 'auth/unauthorized-domain') {
+        const host = typeof window !== 'undefined' ? window.location.hostname : 'this domain';
+        setAuthError(
+          `Domain "${host}" is not authorized for Firebase Sign-In. Add "${host}" under Firebase Console → Authentication → Settings → Authorized domains.`
+        );
+      } else if (code === 'auth/operation-not-allowed') {
+        setAuthError(
+          'Google Sign-In is not enabled in Firebase Console → Authentication → Sign-in method.'
+        );
+      } else if (code === 'auth/invalid-api-key' || code === 'auth/configuration-not-found') {
+        setAuthError(
+          'Firebase environment variables are missing or invalid. Add VITE_FIREBASE_* variables in your Vercel project settings and redeploy.'
+        );
       } else {
         setAuthError(error instanceof Error ? error.message : 'Unable to sign in with Google.');
       }

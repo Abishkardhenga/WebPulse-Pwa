@@ -231,7 +231,7 @@ service cloud.firestore {
     // -------------------------------------------------------------------------
     match /usernames/{username} {
       allow get: if isSignedIn() && isValidUsername(username);
-      allow list: if isSignedIn() && resource.data.username is string && resource.data.username.size() >= 3;
+      allow list: if isSignedIn() && request.query.limit != null && request.query.limit <= 20;
 
       allow create: if isVerifiedUser()
         && isValidUsername(username)
