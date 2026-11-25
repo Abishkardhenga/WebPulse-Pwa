@@ -1,0 +1,526 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private user profile for authenticated PulseCall members.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "description": "Unique lowercase handle claimed by the user",
+          "minLength": 3,
+          "maxLength": 24,
+          "pattern": "^[a-z0-9_]{3,24}$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Verified Google account email",
+          "maxLength": 254
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile avatar URL",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Account creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last profile update timestamp"
+        }
+      },
+      "required": ["uid", "displayName", "email", "photoURL", "createdAt", "updatedAt"]
+    },
+    "PublicHandle": {
+      "title": "PublicHandle",
+      "description": "Unique username registry and non-PII public profile for friend discovery.",
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "Unique lowercase handle",
+          "minLength": 3,
+          "maxLength": 24,
+          "pattern": "^[a-z0-9_]{3,24}$"
+        },
+        "uid": {
+          "type": "string",
+          "description": "Owner Firebase Auth UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Public display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Public profile avatar URL",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Handle claim timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last profile sync timestamp"
+        }
+      },
+      "required": ["username", "uid", "displayName", "photoURL", "createdAt", "updatedAt"]
+    },
+    "ContactItem": {
+      "title": "ContactItem",
+      "description": "Added friend/contact stored under the user's profile.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "Owner user UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "contactUid": {
+          "type": "string",
+          "description": "Friend user UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "username": {
+          "type": "string",
+          "description": "Friend unique handle",
+          "minLength": 3,
+          "maxLength": 24,
+          "pattern": "^[a-z0-9_]{3,24}$"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Friend display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Friend avatar URL",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Contact added timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last contact sync timestamp"
+        }
+      },
+      "required": ["ownerUid", "contactUid", "username", "displayName", "photoURL", "createdAt", "updatedAt"]
+    },
+    "FriendRequestItem": {
+      "title": "FriendRequestItem",
+      "description": "Notification when another user adds you so you can add them back.",
+      "type": "object",
+      "properties": {
+        "targetUid": {
+          "type": "string",
+          "description": "Recipient UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderUid": {
+          "type": "string",
+          "description": "Sender UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderUsername": {
+          "type": "string",
+          "description": "Sender unique handle",
+          "minLength": 3,
+          "maxLength": 24,
+          "pattern": "^[a-z0-9_]{3,24}$"
+        },
+        "senderName": {
+          "type": "string",
+          "description": "Sender display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "senderPhotoUrl": {
+          "type": "string",
+          "description": "Sender avatar URL",
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "dismissed"],
+          "description": "Request state"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Request timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last status update timestamp"
+        }
+      },
+      "required": [
+        "targetUid",
+        "senderUid",
+        "senderUsername",
+        "senderName",
+        "senderPhotoUrl",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "IncomingCallItem": {
+      "title": "IncomingCallItem",
+      "description": "Live incoming 1-on-1 call ring notification for a target user.",
+      "type": "object",
+      "properties": {
+        "roomCode": {
+          "type": "string",
+          "description": "6-character signaling room code",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "callerUid": {
+          "type": "string",
+          "description": "Caller UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "callerUsername": {
+          "type": "string",
+          "description": "Caller unique handle",
+          "minLength": 3,
+          "maxLength": 24,
+          "pattern": "^[a-z0-9_]{3,24}$"
+        },
+        "callerName": {
+          "type": "string",
+          "description": "Caller display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "callerPhotoUrl": {
+          "type": "string",
+          "description": "Caller avatar URL",
+          "maxLength": 500
+        },
+        "calleeUid": {
+          "type": "string",
+          "description": "Recipient UID",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ringing", "accepted", "declined", "cancelled"],
+          "description": "Ringing lifecycle state"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Ring start timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last ring state update timestamp"
+        }
+      },
+      "required": [
+        "roomCode",
+        "callerUid",
+        "callerUsername",
+        "callerName",
+        "callerPhotoUrl",
+        "calleeUid",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "CallHistoryItem": {
+      "title": "CallHistoryItem",
+      "description": "Per-user call history entry stored under the owner's profile.",
+      "type": "object",
+      "properties": {
+        "ownerUid": {
+          "type": "string",
+          "description": "UID of the user who owns this history entry",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "roomCode": {
+          "type": "string",
+          "description": "6-character uppercase alphanumeric room code",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "role": {
+          "type": "string",
+          "enum": ["host", "guest"],
+          "description": "Whether the user initiated or joined the call"
+        },
+        "peerUid": {
+          "type": "string",
+          "description": "Optional peer UID for quick callback",
+          "maxLength": 128
+        },
+        "peerUsername": {
+          "type": "string",
+          "description": "Optional peer @username handle",
+          "maxLength": 24
+        },
+        "peerName": {
+          "type": "string",
+          "description": "Display name of the other participant or Waiting label",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "peerPhotoUrl": {
+          "type": "string",
+          "description": "Avatar URL of the other participant",
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["ongoing", "completed", "cancelled"],
+          "description": "Outcome status of the call"
+        },
+        "durationSeconds": {
+          "type": "number",
+          "description": "Total connected duration in seconds"
+        },
+        "startedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the call session began"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last history update"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when the call ended"
+        }
+      },
+      "required": [
+        "ownerUid",
+        "roomCode",
+        "role",
+        "peerName",
+        "peerPhotoUrl",
+        "status",
+        "durationSeconds",
+        "startedAt",
+        "updatedAt"
+      ]
+    },
+    "CallRoom": {
+      "title": "CallRoom",
+      "description": "1-on-1 WebRTC signaling room keyed by a 6-character room code.",
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "6-character uppercase alphanumeric room code",
+          "minLength": 6,
+          "maxLength": 6,
+          "pattern": "^[A-Z0-9]{6}$"
+        },
+        "hostUid": {
+          "type": "string",
+          "description": "UID of the user who created the room",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "hostUsername": {
+          "type": "string",
+          "description": "Unique handle of the host",
+          "maxLength": 24
+        },
+        "hostName": {
+          "type": "string",
+          "description": "Display name of the host",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "hostPhotoUrl": {
+          "type": "string",
+          "description": "Avatar URL of the host",
+          "maxLength": 500
+        },
+        "calleeUid": {
+          "type": "string",
+          "description": "Optional target callee UID when calling a friend directly",
+          "maxLength": 128
+        },
+        "guestUid": {
+          "type": "string",
+          "description": "UID of the joining guest",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "guestName": {
+          "type": "string",
+          "description": "Display name of the guest",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "guestPhotoUrl": {
+          "type": "string",
+          "description": "Avatar URL of the guest",
+          "maxLength": 500
+        },
+        "status": {
+          "type": "string",
+          "enum": ["waiting", "active", "ended"],
+          "description": "Signaling lifecycle state"
+        },
+        "offer": {
+          "type": "object",
+          "description": "WebRTC SDP offer from host"
+        },
+        "answer": {
+          "type": "object",
+          "description": "WebRTC SDP answer from guest"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Room creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Room last updated timestamp"
+        },
+        "endedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Room termination timestamp"
+        }
+      },
+      "required": ["code", "hostUid", "hostName", "hostPhotoUrl", "status", "offer", "createdAt", "updatedAt"]
+    },
+    "IceCandidate": {
+      "title": "IceCandidate",
+      "description": "WebRTC ICE candidate exchanged between host and guest.",
+      "type": "object",
+      "properties": {
+        "senderUid": {
+          "type": "string",
+          "description": "UID of the user emitting this ICE candidate",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "candidate": {
+          "type": "string",
+          "description": "ICE candidate SDP attribute string",
+          "minLength": 1,
+          "maxLength": 2048
+        },
+        "sdpMid": {
+          "type": "string",
+          "description": "Media stream identification tag",
+          "maxLength": 64
+        },
+        "sdpMLineIndex": {
+          "type": "number",
+          "description": "Zero-based m-line index"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Candidate creation timestamp"
+        }
+      },
+      "required": ["senderUid", "candidate", "sdpMid", "sdpMLineIndex", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/usernames/{username}": {
+      "schema": { "$ref": "#/entities/PublicHandle" },
+      "description": "Unique username registry and non-PII public profile directory."
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile documents strictly accessible only by the owner."
+    },
+    "/users/{userId}/contacts/{contactUid}": {
+      "schema": { "$ref": "#/entities/ContactItem" },
+      "description": "User's added friends list for quick 1-on-1 calling."
+    },
+    "/users/{userId}/friendRequests/{senderUid}": {
+      "schema": { "$ref": "#/entities/FriendRequestItem" },
+      "description": "Incoming friend/add-back notifications."
+    },
+    "/users/{userId}/incomingCalls/{roomCode}": {
+      "schema": { "$ref": "#/entities/IncomingCallItem" },
+      "description": "Real-time incoming call ringing notifications."
+    },
+    "/users/{userId}/calls/{callId}": {
+      "schema": { "$ref": "#/entities/CallHistoryItem" },
+      "description": "User's personal 1-on-1 call history log."
+    },
+    "/rooms/{roomCode}": {
+      "schema": { "$ref": "#/entities/CallRoom" },
+      "description": "1-on-1 WebRTC signaling rooms addressed by 6-character code."
+    },
+    "/rooms/{roomCode}/callerCandidates/{candidateId}": {
+      "schema": { "$ref": "#/entities/IceCandidate" },
+      "description": "ICE candidates emitted by the room host."
+    },
+    "/rooms/{roomCode}/calleeCandidates/{candidateId}": {
+      "schema": { "$ref": "#/entities/IceCandidate" },
+      "description": "ICE candidates emitted by the joining guest."
+    }
+  }
+}

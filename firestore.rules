@@ -1,0 +1,554 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Global Security Primitives
+    // -------------------------------------------------------------------------
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidUsername(username) {
+      return username is string && username.size() >= 3 && username.size() <= 24 && username.matches('^[a-z0-9_]{3,24}$');
+    }
+
+    function isValidRoomCode(code) {
+      return code is string && code.size() == 6 && code.matches('^[A-Z0-9]{6}$');
+    }
+
+    function isValidSdp(sdpObj, expectedType) {
+      return sdpObj is map
+        && sdpObj.keys().hasAll(['type', 'sdp'])
+        && sdpObj.keys().hasOnly(['type', 'sdp'])
+        && sdpObj.type == expectedType
+        && sdpObj.sdp is string
+        && sdpObj.sdp.size() >= 1
+        && sdpObj.sdp.size() <= 32768;
+    }
+
+    // -------------------------------------------------------------------------
+    // Entity Validation Blueprints
+    // -------------------------------------------------------------------------
+    function isValidPublicHandle(data) {
+      return data.keys().hasAll(['username', 'uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['username', 'uid', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+        && isValidUsername(data.username)
+        && data.uid == request.auth.uid
+        && isValidId(data.uid)
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        && data.photoURL is string
+        && data.photoURL.size() <= 500
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'displayName', 'email', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['uid', 'username', 'displayName', 'email', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.uid == request.auth.uid
+        && isValidId(data.uid)
+        && (!('username' in data) || isValidUsername(data.username))
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        && data.email is string
+        && data.email.size() >= 3
+        && data.email.size() <= 254
+        && data.photoURL is string
+        && data.photoURL.size() <= 500
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidContactItem(data) {
+      return data.keys().hasAll(['ownerUid', 'contactUid', 'username', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['ownerUid', 'contactUid', 'username', 'displayName', 'photoURL', 'createdAt', 'updatedAt'])
+        && data.ownerUid == request.auth.uid
+        && isValidId(data.ownerUid)
+        && isValidId(data.contactUid)
+        && isValidUsername(data.username)
+        && data.displayName is string
+        && data.displayName.size() >= 1
+        && data.displayName.size() <= 100
+        && data.photoURL is string
+        && data.photoURL.size() <= 500
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFriendRequest(data) {
+      return data.keys().hasAll([
+          'targetUid', 'senderUid', 'senderUsername', 'senderName',
+          'senderPhotoUrl', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'targetUid', 'senderUid', 'senderUsername', 'senderName',
+          'senderPhotoUrl', 'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidId(data.targetUid)
+        && isValidId(data.senderUid)
+        && isValidUsername(data.senderUsername)
+        && data.senderName is string
+        && data.senderName.size() >= 1
+        && data.senderName.size() <= 100
+        && data.senderPhotoUrl is string
+        && data.senderPhotoUrl.size() <= 500
+        && data.status in ['pending', 'accepted', 'dismissed']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidIncomingCall(data) {
+      return data.keys().hasAll([
+          'roomCode', 'callerUid', 'callerUsername', 'callerName',
+          'callerPhotoUrl', 'calleeUid', 'status', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'roomCode', 'callerUid', 'callerUsername', 'callerName',
+          'callerPhotoUrl', 'calleeUid', 'status', 'createdAt', 'updatedAt'
+        ])
+        && isValidRoomCode(data.roomCode)
+        && isValidId(data.callerUid)
+        && isValidUsername(data.callerUsername)
+        && data.callerName is string
+        && data.callerName.size() >= 1
+        && data.callerName.size() <= 100
+        && data.callerPhotoUrl is string
+        && data.callerPhotoUrl.size() <= 500
+        && isValidId(data.calleeUid)
+        && data.status in ['ringing', 'accepted', 'declined', 'cancelled']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidCallHistoryItem(data) {
+      return data.keys().hasAll([
+          'ownerUid', 'roomCode', 'role', 'peerName', 'peerPhotoUrl',
+          'status', 'durationSeconds', 'startedAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'ownerUid', 'roomCode', 'role', 'peerUid', 'peerUsername',
+          'peerName', 'peerPhotoUrl', 'status', 'durationSeconds',
+          'startedAt', 'updatedAt', 'endedAt'
+        ])
+        && data.ownerUid == request.auth.uid
+        && isValidId(data.ownerUid)
+        && isValidRoomCode(data.roomCode)
+        && data.role in ['host', 'guest']
+        && (!('peerUid' in data) || isValidId(data.peerUid))
+        && (!('peerUsername' in data) || isValidUsername(data.peerUsername))
+        && data.peerName is string
+        && data.peerName.size() >= 1
+        && data.peerName.size() <= 100
+        && data.peerPhotoUrl is string
+        && data.peerPhotoUrl.size() <= 500
+        && data.status in ['ongoing', 'completed', 'cancelled']
+        && data.durationSeconds is int
+        && data.durationSeconds >= 0
+        && data.durationSeconds <= 86400
+        && data.startedAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('endedAt' in data) || data.endedAt is timestamp);
+    }
+
+    function isValidCallRoom(data) {
+      return data.keys().hasAll([
+          'code', 'hostUid', 'hostName', 'hostPhotoUrl',
+          'status', 'offer', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'code', 'hostUid', 'hostUsername', 'hostName', 'hostPhotoUrl',
+          'calleeUid', 'guestUid', 'guestName', 'guestPhotoUrl',
+          'status', 'offer', 'answer', 'createdAt', 'updatedAt', 'endedAt'
+        ])
+        && isValidRoomCode(data.code)
+        && isValidId(data.hostUid)
+        && (!('hostUsername' in data) || isValidUsername(data.hostUsername))
+        && data.hostName is string
+        && data.hostName.size() >= 1
+        && data.hostName.size() <= 100
+        && data.hostPhotoUrl is string
+        && data.hostPhotoUrl.size() <= 500
+        && (!('calleeUid' in data) || isValidId(data.calleeUid))
+        && data.status in ['waiting', 'active', 'ended']
+        && isValidSdp(data.offer, 'offer')
+        && (!('guestUid' in data) || isValidId(data.guestUid))
+        && (!('guestName' in data) || (data.guestName is string && data.guestName.size() >= 1 && data.guestName.size() <= 100))
+        && (!('guestPhotoUrl' in data) || (data.guestPhotoUrl is string && data.guestPhotoUrl.size() <= 500))
+        && (!('answer' in data) || isValidSdp(data.answer, 'answer'))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp
+        && (!('endedAt' in data) || data.endedAt is timestamp);
+    }
+
+    function isValidIceCandidate(data) {
+      return data.keys().hasAll(['senderUid', 'candidate', 'sdpMid', 'sdpMLineIndex', 'createdAt'])
+        && data.keys().hasOnly(['senderUid', 'candidate', 'sdpMid', 'sdpMLineIndex', 'createdAt'])
+        && data.senderUid == request.auth.uid
+        && isValidId(data.senderUid)
+        && data.candidate is string
+        && data.candidate.size() >= 1
+        && data.candidate.size() <= 2048
+        && data.sdpMid is string
+        && data.sdpMid.size() <= 64
+        && data.sdpMLineIndex is int
+        && data.sdpMLineIndex >= 0
+        && data.sdpMLineIndex <= 32
+        && data.createdAt is timestamp;
+    }
+
+    // -------------------------------------------------------------------------
+    // Public Unique Username Directory (Non-PII Only)
+    // -------------------------------------------------------------------------
+    match /usernames/{username} {
+      allow get: if isSignedIn() && isValidUsername(username);
+      allow list: if isSignedIn() && resource.data.username is string && resource.data.username.size() >= 3;
+
+      allow create: if isVerifiedUser()
+        && isValidUsername(username)
+        && isValidPublicHandle(incoming())
+        && incoming().username == username
+        && incoming().uid == request.auth.uid
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time
+        && !exists(/databases/$(database)/documents/usernames/$(username))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.username == username;
+
+      allow update: if isVerifiedUser()
+        && isValidUsername(username)
+        && isValidPublicHandle(incoming())
+        && existing().uid == request.auth.uid
+        && incoming().uid == existing().uid
+        && incoming().username == existing().username
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // User Profiles, Contacts, Requests, Incoming Calls & Call History
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && !('username' in incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Profile metadata sync without changing username
+          (
+            ((!('username' in existing()) && !('username' in incoming())) || ('username' in existing() && 'username' in incoming() && incoming().username == existing().username))
+            && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoURL', 'updatedAt'])
+          )
+          ||
+          // One-time atomic username claim synchronized with /usernames/{username}
+          (
+            !('username' in existing())
+            && 'username' in incoming()
+            && isValidUsername(incoming().username)
+            && getAfter(/databases/$(database)/documents/usernames/$(incoming().username)).data.uid == userId
+            && incoming().diff(existing()).affectedKeys().hasOnly(['username', 'displayName', 'photoURL', 'updatedAt'])
+          )
+        );
+
+      allow delete: if false;
+
+      match /contacts/{contactUid} {
+        allow get: if isOwner(userId) && isValidId(contactUid);
+        allow list: if isOwner(userId) && resource.data.ownerUid == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(contactUid)
+          && isValidContactItem(incoming())
+          && incoming().ownerUid == userId
+          && incoming().contactUid == contactUid
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/usernames/$(incoming().username));
+
+        allow update: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(contactUid)
+          && isValidContactItem(incoming())
+          && incoming().ownerUid == existing().ownerUid
+          && incoming().contactUid == existing().contactUid
+          && incoming().username == existing().username
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(contactUid);
+      }
+
+      match /friendRequests/{senderUid} {
+        allow get: if (isOwner(userId) || isOwner(senderUid)) && isValidId(senderUid);
+        allow list: if isOwner(userId) && resource.data.targetUid == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidId(senderUid)
+          && senderUid == request.auth.uid
+          && senderUid != userId
+          && isValidFriendRequest(incoming())
+          && incoming().targetUid == userId
+          && incoming().senderUid == request.auth.uid
+          && incoming().status == 'pending'
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/usernames/$(incoming().senderUsername));
+
+        allow update: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(senderUid)
+          && isValidFriendRequest(incoming())
+          && existing().status == 'pending'
+          && incoming().targetUid == existing().targetUid
+          && incoming().senderUid == existing().senderUid
+          && incoming().senderUsername == existing().senderUsername
+          && incoming().senderName == existing().senderName
+          && incoming().senderPhotoUrl == existing().senderPhotoUrl
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().status in ['accepted', 'dismissed']
+          && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']);
+
+        allow delete: if (isOwner(userId) || isOwner(senderUid)) && isValidId(senderUid);
+      }
+
+      match /incomingCalls/{roomCode} {
+        allow get: if isSignedIn()
+          && isValidRoomCode(roomCode)
+          && (isOwner(userId) || (resource != null && resource.data.callerUid == request.auth.uid));
+        allow list: if isOwner(userId) && resource.data.calleeUid == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidRoomCode(roomCode)
+          && isValidIncomingCall(incoming())
+          && incoming().roomCode == roomCode
+          && incoming().calleeUid == userId
+          && incoming().callerUid == request.auth.uid
+          && incoming().status == 'ringing'
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && exists(/databases/$(database)/documents/rooms/$(roomCode))
+          && get(/databases/$(database)/documents/rooms/$(roomCode)).data.hostUid == request.auth.uid;
+
+        allow update: if isVerifiedUser()
+          && isValidId(userId)
+          && isValidRoomCode(roomCode)
+          && isValidIncomingCall(incoming())
+          && existing().status == 'ringing'
+          && incoming().roomCode == existing().roomCode
+          && incoming().callerUid == existing().callerUid
+          && incoming().callerUsername == existing().callerUsername
+          && incoming().callerName == existing().callerName
+          && incoming().callerPhotoUrl == existing().callerPhotoUrl
+          && incoming().calleeUid == existing().calleeUid
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          && (
+            (isOwner(userId) && incoming().status in ['accepted', 'declined'])
+            ||
+            (request.auth.uid == existing().callerUid && incoming().status == 'cancelled')
+          );
+
+        allow delete: if isOwner(userId) && isValidRoomCode(roomCode);
+      }
+
+      match /calls/{callId} {
+        allow get: if isOwner(userId) && isValidId(callId);
+        allow list: if isOwner(userId) && resource.data.ownerUid == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(callId)
+          && isValidCallHistoryItem(incoming())
+          && incoming().startedAt == request.time
+          && incoming().updatedAt == request.time;
+
+        allow update: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(callId)
+          && isValidCallHistoryItem(incoming())
+          && existing().status == 'ongoing'
+          && incoming().ownerUid == existing().ownerUid
+          && incoming().roomCode == existing().roomCode
+          && incoming().role == existing().role
+          && incoming().startedAt == existing().startedAt
+          && incoming().updatedAt == request.time
+          && incoming().diff(existing()).affectedKeys().hasOnly([
+            'peerUid', 'peerUsername', 'peerName', 'peerPhotoUrl',
+            'status', 'durationSeconds', 'endedAt', 'updatedAt'
+          ]);
+
+        allow delete: if isOwner(userId) && isValidId(callId);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // WebRTC Signaling Rooms (No Enumeration Allowed)
+    // -------------------------------------------------------------------------
+    match /rooms/{roomCode} {
+      allow get: if isSignedIn() && isValidRoomCode(roomCode);
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isValidRoomCode(roomCode)
+        && isValidCallRoom(incoming())
+        && incoming().code == roomCode
+        && incoming().hostUid == request.auth.uid
+        && incoming().status == 'waiting'
+        && !('guestUid' in incoming())
+        && !('answer' in incoming())
+        && !('endedAt' in incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isValidRoomCode(roomCode)
+        && isValidCallRoom(incoming())
+        && existing().status != 'ended'
+        && incoming().code == existing().code
+        && incoming().hostUid == existing().hostUid
+        && ((!('hostUsername' in existing()) && !('hostUsername' in incoming())) || ('hostUsername' in existing() && 'hostUsername' in incoming() && incoming().hostUsername == existing().hostUsername))
+        && incoming().hostName == existing().hostName
+        && incoming().hostPhotoUrl == existing().hostPhotoUrl
+        && ((!('calleeUid' in existing()) && !('calleeUid' in incoming())) || ('calleeUid' in existing() && 'calleeUid' in incoming() && incoming().calleeUid == existing().calleeUid))
+        && incoming().offer == existing().offer
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action 1: Guest joins a waiting room with SDP answer
+          (
+            existing().status == 'waiting'
+            && !('guestUid' in existing())
+            && incoming().status == 'active'
+            && incoming().guestUid == request.auth.uid
+            && 'guestName' in incoming()
+            && 'guestPhotoUrl' in incoming()
+            && 'answer' in incoming()
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'guestUid', 'guestName', 'guestPhotoUrl', 'answer', 'status', 'updatedAt'
+            ])
+          )
+          ||
+          // Action 2: Either participant ends the call (terminal state)
+          (
+            existing().status in ['waiting', 'active']
+            && (
+              request.auth.uid == existing().hostUid
+              || ('guestUid' in existing() && request.auth.uid == existing().guestUid)
+              || ('calleeUid' in existing() && request.auth.uid == existing().calleeUid)
+            )
+            && incoming().status == 'ended'
+            && 'endedAt' in incoming()
+            && incoming().endedAt == request.time
+            && incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'endedAt', 'updatedAt'
+            ])
+          )
+        );
+
+      allow delete: if false;
+
+      // Master Gate helpers on parent room document
+      function parentRoomExists() {
+        return exists(/databases/$(database)/documents/rooms/$(roomCode));
+      }
+
+      function getParentRoom() {
+        return get(/databases/$(database)/documents/rooms/$(roomCode)).data;
+      }
+
+      match /callerCandidates/{candidateId} {
+        allow get, list: if isSignedIn()
+          && isValidRoomCode(roomCode)
+          && parentRoomExists()
+          && (
+            getParentRoom().hostUid == request.auth.uid
+            || ('guestUid' in getParentRoom() && getParentRoom().guestUid == request.auth.uid)
+          );
+
+        allow create: if isVerifiedUser()
+          && isValidRoomCode(roomCode)
+          && isValidId(candidateId)
+          && isValidIceCandidate(incoming())
+          && incoming().createdAt == request.time
+          && parentRoomExists()
+          && getParentRoom().hostUid == request.auth.uid
+          && getParentRoom().status != 'ended';
+
+        allow update, delete: if false;
+      }
+
+      match /calleeCandidates/{candidateId} {
+        allow get, list: if isSignedIn()
+          && isValidRoomCode(roomCode)
+          && parentRoomExists()
+          && (
+            getParentRoom().hostUid == request.auth.uid
+            || ('guestUid' in getParentRoom() && getParentRoom().guestUid == request.auth.uid)
+          );
+
+        allow create: if isVerifiedUser()
+          && isValidRoomCode(roomCode)
+          && isValidId(candidateId)
+          && isValidIceCandidate(incoming())
+          && incoming().createdAt == request.time
+          && parentRoomExists()
+          && 'guestUid' in getParentRoom()
+          && getParentRoom().guestUid == request.auth.uid
+          && getParentRoom().status != 'ended';
+
+        allow update, delete: if false;
+      }
+    }
+  }
+}

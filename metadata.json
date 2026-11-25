@@ -1,0 +1,6 @@
+{
+  "name": "PulseCall",
+  "description": "Mobile-first 1-on-1 cross-platform video calling PWA for iOS Safari and Android Chrome.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
